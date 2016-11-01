@@ -1,0 +1,37 @@
+{
+  "t2.nano": { "mem": 0.5 },
+  "t2.micro": { "mem": 1 },
+  "t2.small": { "mem": 2 },
+  "t2.medium": { "mem": 4 },
+  "t2.large": { "mem": 8 },
+
+  "m4.large": { "mem": 8 },
+  "m4.xlarge": { "mem": 16 },
+  "m4.2xlarge": { "mem": 32 },
+  "m4.4xlarge": { "mem": 64 },
+  "m4.10xlarge": { "mem": 160 },
+
+  "m3.medium": { "mem": 3.75 },
+  "m3.large": { "mem": 7.5 },
+  "m3.xlarge": { "mem": 15 },
+  "m3.2xlarge": { "mem": 30 },
+
+  "c4.large": { "mem": 3.75 },
+  "c4.xlarge": { "mem": 7.5 },
+  "c4.2xlarge": { "mem": 15 },
+  "c4.4xlarge": { "mem": 30 },
+  "c4.8xlarge": { "mem": 60 },
+
+  "c3.large": { "mem": 3.75 },
+  "c3.xlarge": { "mem": 7.5 },
+  "c3.2xlarge": { "mem": 15 },
+  "c3.4xlarge": { "mem": 30 },
+  "c3.8xlarge": { "mem": 60 },
+
+  "r3.large": { "mem": 15.25 },
+  "r3.xlarge": { "mem": 30.5 },
+  "r3.2xlarge": { "mem": 61 },
+  "r3.4xlarge": { "mem": 122 },
+  "r3.8xlarge": { "mem": 244 }
+
+}
