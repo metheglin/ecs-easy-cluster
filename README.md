@@ -22,10 +22,17 @@ Or install it yourself as:
 ```
 require "ecs-easy-cluster"
 
+#
+# Set basic info: credentials and region
+#
 configure = Ecs::Easy::Configure.new do |c|
   c.profile = "your-aws-profile"
   c.region = "your-aws-region"
 end
+
+#
+# Define ec2 instance profile
+#
 instance = Ecs::Easy::Instance.new do |i|
   i.type      = "t2.nano"
   i.keypair   = "your-keypair"
@@ -35,12 +42,25 @@ instance = Ecs::Easy::Instance.new do |i|
   i.image_id  = "ami-00000000"
   i.security_group = "sg-00000000"
 end
+
+# 
+# Define the scale setting of your cluster
+#
 cluster = Ecs::Easy::Cluster::MemScale.new("cluster-name", configure) do |c|
   c.max_instances = 2
   c.min_instances = 1
   c.instance = instance
 end
+
+#
+# Make your task running
+#
 cluster.make_task_running!("your-task-definition-name")
+
+#
+# Shrink your scaled instances
+#
+cluster.shrink!
 ```
 
 ## Memo

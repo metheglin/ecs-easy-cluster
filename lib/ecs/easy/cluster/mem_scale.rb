@@ -3,7 +3,9 @@ module Ecs::Easy::Cluster
 
     def make_task_running!( task_definition, overrides={} )
       unless exists?
-        raise "Failed to create the new cluster. You should check the CloudFormation events." unless up!
+        unless up!
+          raise "Failed to create the new cluster. You should check the CloudFormation events."
+        end
       end
 
       res = nil

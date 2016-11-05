@@ -1,6 +1,9 @@
 module Ecs::Easy::Cluster
   class Base
 
+    TEMPLATE_PATH = File.expand_path("../config/cloudFormation_template.json", __FILE__)
+    TEMPLATE_BODY = File.read( TEMPLATE_PATH )
+
     attr_reader :name, :configure, :ecs_client, :stack_name, :cfn_client
     attr_accessor :instance, :min_instances, :max_instances
 
@@ -16,6 +19,11 @@ module Ecs::Easy::Cluster
         region: configure.region,
         credentials: configure.credentials
       )
+
+      # default
+      @min_instances = 1
+      @max_instances = 1
+      
       yield( self ) if block_given?
     end
 
@@ -26,10 +34,6 @@ module Ecs::Easy::Cluster
       return res.stacks.length > 0
     rescue => e
       return false
-      # cluster_names = ecs_client.list_clusters.cluster_arns.map do |arn|
-      #   arn.split("/").last
-      # end
-      # cluster_names.include?( name )
     end
 
     # Check if all the container instances on the cluster are ready
@@ -74,15 +78,12 @@ module Ecs::Easy::Cluster
       )
     end
 
-    # TODO: Support the case: min_instances > 2
     def up!
       unless exists?
         ecs_client.create_cluster( cluster_name: name )
-        template_path = File.expand_path("../config/cloudFormation_template.json", __FILE__)
-        template_body = File.read( template_path )
         cfn_client.create_stack(
           stack_name: stack_name,
-          template_body: template_body,
+          template_body: TEMPLATE_BODY,
           parameters: [
             {
               parameter_key: "EcsAmiId",
@@ -112,6 +113,10 @@ module Ecs::Easy::Cluster
               parameter_key: "EcsCluster",
               parameter_value: name,
             },
+            {
+              parameter_key: "AsgMaxSize",
+              parameter_value: min_instances,
+            },
           ],
           capabilities: ["CAPABILITY_IAM"],
           on_failure: "DELETE",
@@ -120,27 +125,6 @@ module Ecs::Easy::Cluster
           :stack_create_complete, 
           stack_name: stack_name
         )
-        
-        # This depends on the ecs-cli command
-        # cmd = <<-EOH
-        #   ecs-cli up \
-        #     --keypair #{instance.keypair} \
-        #     --capability-iam \
-        #     --size #{min_instances} \
-        #     --instance-type #{instance.type} \
-        #     --azs #{instance.azs} \
-        #     --subnets #{instance.subnets} \
-        #     --vpc #{instance.vpc} \
-        #     --security-group #{instance.security_group} \
-        #     --image-id #{instance.image_id}
-        # EOH
-        # puts cmd
-
-        # IO.popen( cmd, "r" ) do |pipe|
-        #   while line = pipe.gets
-        #     puts line
-        #   end
-        # end
       end
 
       return exists?
@@ -156,18 +140,22 @@ module Ecs::Easy::Cluster
 
     def scale!
       size = (num_instances+1 <= max_instances) ? num_instances+1 : max_instances
-      cmd = <<-EOH
-        ecs-cli scale \
-          --capability-iam \
-          --size #{size}
-      EOH
-      puts cmd
 
-      IO.popen( cmd, "r" ) do |pipe|
-        while line = pipe.gets
-          puts line
-        end
-      end
+      cfn_client.create_stack(
+        stack_name: stack_name,
+        template_body: TEMPLATE_BODY,
+        parameters: [
+          {
+            parameter_key: "AsgMaxSize",
+            parameter_value: size,
+          },
+        ],
+        capabilities: ["CAPABILITY_IAM"],
+      )
+      cfn_client.wait_until(
+        :stack_update_complete, 
+        stack_name: stack_name
+      )
 
       # Check the scale completion every 2 seconds until max 30 times
       30.times do
@@ -180,18 +168,21 @@ module Ecs::Easy::Cluster
 
     # Deregister some container instances if they are idling
     def shrink!
-      cmd = <<-EOH
-        ecs-cli scale \
-          --capability-iam \
-          --size #{min_instances}
-      EOH
-      puts cmd
-
-      IO.popen( cmd, "r" ) do |pipe|
-        while line = pipe.gets
-          puts line
-        end
-      end
+      cfn_client.create_stack(
+        stack_name: stack_name,
+        template_body: TEMPLATE_BODY,
+        parameters: [
+          {
+            parameter_key: "AsgMaxSize",
+            parameter_value: min_instances,
+          },
+        ],
+        capabilities: ["CAPABILITY_IAM"],
+      )
+      cfn_client.wait_until(
+        :stack_update_complete, 
+        stack_name: stack_name
+      )
     end
 
     private
