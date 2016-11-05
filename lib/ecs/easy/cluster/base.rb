@@ -23,7 +23,7 @@ module Ecs::Easy::Cluster
       # default
       @min_instances = 1
       @max_instances = 1
-      
+
       yield( self ) if block_given?
     end
 
@@ -40,11 +40,16 @@ module Ecs::Easy::Cluster
     def ready?
       return false unless exists?
       instance_arns = ecs_client.list_container_instances(cluster: name).container_instance_arns
-      instances = ecs_client.describe_container_instances(
+      return false if instance_arns.nil? or instance_arns.empty?
+      res = ecs_client.describe_container_instances(
         cluster: name,
         container_instances: instance_arns
-      ).container_instances
-      instances.all? {|i| i.status == "ACTIVE" }
+      )
+      # unless res.respond_to?("container_instances") or
+      #   res.container_instances.nil?
+      #   return false
+      # end
+      res.container_instances.all? {|i| i.status == "ACTIVE" }
     end
 
     # Check if the task exists on the cluster
@@ -81,43 +86,12 @@ module Ecs::Easy::Cluster
     def up!
       unless exists?
         ecs_client.create_cluster( cluster_name: name )
+
+        params = instance.cfn_parameters( name, "AsgMaxSize" => min_instances.to_s)
         cfn_client.create_stack(
           stack_name: stack_name,
           template_body: TEMPLATE_BODY,
-          parameters: [
-            {
-              parameter_key: "EcsAmiId",
-              parameter_value: instance.image_id,
-            },
-            {
-              parameter_key: "EcsInstanceType",
-              parameter_value: instance.type,
-            },
-            {
-              parameter_key: "KeyName",
-              parameter_value: instance.keypair,
-            },
-            {
-              parameter_key: "VpcId",
-              parameter_value: instance.vpc,
-            },
-            {
-              parameter_key: "SubnetIds",
-              parameter_value: instance.subnets,
-            },
-            {
-              parameter_key: "SecurityGroup",
-              parameter_value: instance.security_group,
-            },
-            {
-              parameter_key: "EcsCluster",
-              parameter_value: name,
-            },
-            {
-              parameter_key: "AsgMaxSize",
-              parameter_value: min_instances,
-            },
-          ],
+          parameters: params,
           capabilities: ["CAPABILITY_IAM"],
           on_failure: "DELETE",
         )
@@ -141,15 +115,11 @@ module Ecs::Easy::Cluster
     def scale!
       size = (num_instances+1 <= max_instances) ? num_instances+1 : max_instances
 
-      cfn_client.create_stack(
+      params = instance.cfn_parameters( name, "AsgMaxSize" => size.to_s)
+      cfn_client.update_stack(
         stack_name: stack_name,
         template_body: TEMPLATE_BODY,
-        parameters: [
-          {
-            parameter_key: "AsgMaxSize",
-            parameter_value: size,
-          },
-        ],
+        parameters: params,
         capabilities: ["CAPABILITY_IAM"],
       )
       cfn_client.wait_until(
@@ -164,25 +134,26 @@ module Ecs::Easy::Cluster
       end
 
       return false
+    rescue Aws::Waiters::Errors::WaiterFailed => e
+      puts e
     end
 
     # Deregister some container instances if they are idling
+    # TODO: Support idling check of container instances
     def shrink!
-      cfn_client.create_stack(
+      params = instance.cfn_parameters( name, "AsgMaxSize" => min_instances.to_s)
+      cfn_client.update_stack(
         stack_name: stack_name,
         template_body: TEMPLATE_BODY,
-        parameters: [
-          {
-            parameter_key: "AsgMaxSize",
-            parameter_value: min_instances,
-          },
-        ],
+        parameters: params,
         capabilities: ["CAPABILITY_IAM"],
       )
       cfn_client.wait_until(
         :stack_update_complete, 
         stack_name: stack_name
       )
+    rescue Aws::Waiters::Errors::WaiterFailed => e
+      puts e
     end
 
     private

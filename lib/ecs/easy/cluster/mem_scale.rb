@@ -1,6 +1,9 @@
 module Ecs::Easy::Cluster
   class MemScale < Base 
 
+    EC2_PROFILE_PATH = File.expand_path("../config/ec2_profile.json", __FILE__)
+    INSTANCE_TYPES = JSON.parse(File.read( EC2_PROFILE_PATH ))
+
     def make_task_running!( task_definition, overrides={} )
       unless exists?
         unless up!
@@ -16,6 +19,7 @@ module Ecs::Easy::Cluster
         if res.failures.empty?
           break
         else # Failure because some reasons
+          puts res.failures
           case fail_reason(res.failures)
           when "RESOURCE:MEMORY"
             puts "No enough memory on current container instances to execute this task. Add another container instance automatically."
@@ -44,14 +48,14 @@ module Ecs::Easy::Cluster
 
     private
       def required_memory( task_definition )
-        res = client.describe_task_definition( task_definition: task_definition )
+        res = ecs_client.describe_task_definition( task_definition: task_definition )
         container_mems = res.task_definition.container_definitions.map(&:memory)
         total_mem_mb = container_mems.inject(0){|sum,n| sum + n}
         total_mem_mb * 1024 * 1024 # byte
       end
 
       def current_instance_memory
-        INSTANCE_TYPES[instance.type][:mem] * 1024 * 1024 * 1024 # byte
+        INSTANCE_TYPES[instance.type]["mem"] * 1024 * 1024 * 1024 # byte
       end
   end
 end
