@@ -59,6 +59,9 @@ cluster.make_task_running!("your-task-definition-name")
 
 #
 # Shrink your scaled instances
+# ------------
+# !! CAUTION !!
+# This command terminates redundant instances even if some tasks are running on them.
 #
 cluster.shrink!
 ```
