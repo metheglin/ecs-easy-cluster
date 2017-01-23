@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["pigmybank@gmail.com"]
   spec.summary       = %q{easy-to-use AWS ECS Cluster.}
   spec.description   = %q{easy-to-use AWS ECS Cluster.}
-  spec.homepage      = ""
+  spec.homepage      = "https://github.com/metheglin/ecs-easy-cluster"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0")
