@@ -1,7 +1,7 @@
 module Ecs::Easy::Cluster
   class Base
 
-    TEMPLATE_PATH = File.expand_path("../config/cloudFormation_template.json", __FILE__)
+    TEMPLATE_PATH = File.expand_path("../config/cloudformation_template.json", __FILE__)
     TEMPLATE_BODY = File.read( TEMPLATE_PATH )
 
     attr_reader :name, :configure, :ecs_client, :stack_name, :cfn_client

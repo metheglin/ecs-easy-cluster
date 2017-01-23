@@ -20,7 +20,7 @@ Or install it yourself as:
 ## Usage
 
 ```
-require "ecs-easy-cluster"
+require "ecs/easy/cluster"
 
 #
 # Set basic info: credentials and region
@@ -55,7 +55,17 @@ end
 #
 # Make your task running
 #
-cluster.make_task_running!("your-task-definition-name")
+res = cluster.make_task_running!("your-task-definition-name")
+
+# 
+# You can call aws-sdk Aws::ECS::Client method with: cluster.ecs_client
+# http://docs.aws.amazon.com/sdkforruby/api/Aws/ECS/Client.html
+# 
+task_arns = res["tasks"].map{|t| t["task_arn"]}
+cluster.ecs_client.wait_until(:tasks_stopped, cluster: "cluster-name", tasks: task_arns) do |w|
+  w.max_attempts = 100
+  w.delay = 6
+end
 
 #
 # Shrink your scaled instances
@@ -69,4 +79,5 @@ cluster.shrink!
 ## Memo
 
 ecs/easy/cluster/cloudformation_template.json.erb is refered from the link below.
+
 https://github.com/aws/amazon-ecs-cli/blob/master/ecs-cli/modules/aws/clients/cloudformation/template.go
