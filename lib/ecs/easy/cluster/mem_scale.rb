@@ -15,26 +15,28 @@ module Ecs::Easy::Cluster
       3.times do
         wait_until_ready
         res = run_task!( task_definition, overrides )
+        break if res.failures.empty?
+        puts "Failed to run the task. Try again."
+        sleep 5
+      end
 
-        if res.failures.empty?
-          break
-        else # Failure because some reasons
-          puts res.failures
-          case fail_reason(res.failures)
-          when "RESOURCE:MEMORY"
-            puts "No enough memory on current container instances to execute this task. Add another container instance automatically."
+      # Failure because some reasons
+      unless res.failures.empty?
+        puts res.failures
+        case fail_reason(res.failures)
+        when "RESOURCE:MEMORY"
+          puts "No enough memory on current container instances to execute this task. Add another container instance automatically."
 
-            if num_instances >= max_instances
-              raise "Could\'t scale more instances because it reaches maximum instances. You should upgrade the maximum number of instance to execute multiple tasks at the same time."
-            end
-            unless acceptable_task?( task_definition )
-              raise "Could\'t accept this task because of the lack of memory. You should upgrade ec2 instance type."
-            end
-
-            scale!
-          else
-            raise "Unknown reason: #{res.failures}"
+          if num_instances >= max_instances
+            raise "Could\'t scale more instances because it reaches maximum instances. You should upgrade the maximum number of instance to execute multiple tasks at the same time."
           end
+          unless acceptable_task?( task_definition )
+            raise "Could\'t accept this task because of the lack of memory. You should upgrade ec2 instance type."
+          end
+
+          scale!
+        else
+          raise "Unknown reason: #{res.failures}"
         end
       end
 
