@@ -156,13 +156,5 @@ module Ecs::Easy::Cluster
       puts e
     end
 
-    private
-      def fail_reason( failures )
-        reasons = failures.map {|f| f.reason }
-        if reasons.include?( "RESOURCE:MEMORY" )
-          return "RESOURCE:MEMORY"
-        end
-      end
-
   end
 end

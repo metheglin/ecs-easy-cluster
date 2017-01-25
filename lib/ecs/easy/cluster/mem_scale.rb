@@ -1,6 +1,27 @@
 module Ecs::Easy::Cluster
   class MemScale < Base 
 
+    class CannotStartTaskError < StandardError
+      attr_reader :result
+      def initialize( result )
+        @result = result
+      end
+
+      def failures
+        return nil unless result
+        result.failures
+      end
+
+      def fail_reason
+        return nil if failures.empty?
+        reasons = failures.map {|f| f.reason }
+        if reasons.include?( "RESOURCE:MEMORY" )
+          return "RESOURCE:MEMORY"
+        end
+        nil
+      end
+    end
+
     EC2_PROFILE_PATH = File.expand_path("../config/ec2_profile.json", __FILE__)
     INSTANCE_TYPES = JSON.parse(File.read( EC2_PROFILE_PATH ))
 
@@ -11,33 +32,37 @@ module Ecs::Easy::Cluster
         end
       end
 
-      res = nil
-      3.times do
+      retry_count = 3
+      begin
         wait_until_ready
         res = run_task!( task_definition, overrides )
-        break if res.failures.empty?
-        puts "Failed to run the task. Try again."
-        sleep 5
-      end
-
-      # Failure because some reasons
-      unless res.failures.empty?
-        puts res.failures
-        case fail_reason(res.failures)
+        unless res.failures.empty?
+          raise CannotStartTaskError.new( res )
+        end
+      rescue CannotStartTaskError => e
+        puts e.failures
+        case e.fail_reason
         when "RESOURCE:MEMORY"
           puts "No enough memory on current container instances to execute this task. Add another container instance automatically."
 
           if num_instances >= max_instances
-            raise "Could\'t scale more instances because it reaches maximum instances. You should upgrade the maximum number of instance to execute multiple tasks at the same time."
+            puts "Couldn\'t scale more instances because it reaches maximum instances. You should upgrade the maximum number of instance to execute multiple tasks at the same time."
           end
           unless acceptable_task?( task_definition )
-            raise "Could\'t accept this task because of the lack of memory. You should upgrade ec2 instance type."
+            raise "Couldn\'t accept this task because of the lack of memory. You should upgrade ec2 instance type."
           end
 
           scale!
         else
-          raise "Unknown reason: #{res.failures}"
+          raise "Unknown reason: #{e.failures}"
         end
+
+        puts "Failed to run the task. Try again."
+        sleep 10
+        retry_count -= 1
+        retry if retry_count > 0
+      rescue => e
+        raise "Unknown reason: #{e}"
       end
 
       res
