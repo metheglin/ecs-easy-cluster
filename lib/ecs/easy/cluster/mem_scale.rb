@@ -32,7 +32,7 @@ module Ecs::Easy::Cluster
         end
       end
 
-      retry_count = 3
+      retry_count = 0
       begin
         wait_until_ready
         res = run_task!( task_definition, overrides )
@@ -45,22 +45,23 @@ module Ecs::Easy::Cluster
         when "RESOURCE:MEMORY"
           puts "No enough memory on current container instances to execute this task. Add another container instance automatically."
 
-          if num_instances >= max_instances
-            puts "Couldn\'t scale more instances because it reaches maximum instances. You should upgrade the maximum number of instance to execute multiple tasks at the same time."
-          end
           unless acceptable_task?( task_definition )
             raise "Couldn\'t accept this task because of the lack of memory. You should upgrade ec2 instance type."
           end
 
-          scale!
+          if num_instances >= max_instances
+            puts "Couldn\'t scale more instances because it reaches maximum instances. You should upgrade the maximum number of instance to execute multiple tasks at the same time."
+          else
+            scale!
+          end
         else
           raise "Unknown reason: #{e.failures}"
         end
 
         puts "Failed to run the task. Try again."
         sleep 10
-        retry_count -= 1
-        retry if retry_count > 0
+        retry_count += 1
+        retry if retry_count <= 3
       rescue => e
         raise "Unknown reason: #{e}"
       end
