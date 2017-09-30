@@ -1,9 +1,6 @@
 module Ecs::Easy::Cluster
   class Base
 
-    TEMPLATE_PATH = File.expand_path("../config/cloudformation_template.json", __FILE__)
-    TEMPLATE_BODY = File.read( TEMPLATE_PATH )
-
     attr_reader :name, :configure, :ecs_client, :stack_name, :cfn_client
     attr_accessor :instance, :min_instances, :max_instances
 
@@ -88,9 +85,10 @@ module Ecs::Easy::Cluster
         ecs_client.create_cluster( cluster_name: name )
 
         params = instance.cfn_parameters( name, "AsgMaxSize" => min_instances.to_s)
+        template_body = instance.template_body
         cfn_client.create_stack(
           stack_name: stack_name,
-          template_body: TEMPLATE_BODY,
+          template_body: template_body,
           parameters: params,
           capabilities: ["CAPABILITY_IAM"],
           on_failure: "DELETE",
@@ -116,9 +114,10 @@ module Ecs::Easy::Cluster
       size = (num_instances+1 <= max_instances) ? num_instances+1 : max_instances
 
       params = instance.cfn_parameters( name, "AsgMaxSize" => size.to_s)
+      template_body = instance.template_body
       cfn_client.update_stack(
         stack_name: stack_name,
-        template_body: TEMPLATE_BODY,
+        template_body: template_body,
         parameters: params,
         capabilities: ["CAPABILITY_IAM"],
       )
@@ -142,9 +141,10 @@ module Ecs::Easy::Cluster
     # TODO: Support idling check of container instances
     def shrink!
       params = instance.cfn_parameters( name, "AsgMaxSize" => min_instances.to_s)
+      template_body = instance.template_body
       cfn_client.update_stack(
         stack_name: stack_name,
-        template_body: TEMPLATE_BODY,
+        template_body: template_body,
         parameters: params,
         capabilities: ["CAPABILITY_IAM"],
       )

@@ -2,19 +2,43 @@ module Ecs
   module Easy
     class Instance
 
+      TEMPLATE_PATH = File.expand_path("../cluster/config/cloudformation_template.json", __FILE__)
+      TEMPLATE_BODY = File.read( TEMPLATE_PATH )
+
       attr_accessor :type, 
         :keypair, 
         :azs, # availability zones
         :subnets, 
         :vpc, 
         :image_id, 
-        :security_group
+        :security_group,
+        :user_data
 
       def initialize **params
         params.each do |k,v|
           self.send("#{k}=", v) if self.methods.include?(k)
         end
         yield( self ) if block_given?
+      end
+
+      def custom_user_data
+        default_user_data = [
+          "#!/bin/bash\n",
+          "echo ECS_CLUSTER=",
+          {
+            "Ref" => "EcsCluster"
+          },
+          " >> /etc/ecs/ecs.config\n"
+        ]
+        default_user_data.concat(user_data)
+      end
+
+      def template_body
+        return TEMPLATE_BODY if user_data.nil? or user_data.empty?
+        body = JSON.parse( TEMPLATE_BODY )
+        body["Resources"]["EcsInstanceLc"]["Properties"]["UserData"]["Fn::Base64"]["Fn::Join"][1] = custom_user_data
+        body["Resources"]["EcsInstanceLcWithoutKeyPair"]["Properties"]["UserData"]["Fn::Base64"]["Fn::Join"][1] = custom_user_data
+        return JSON.pretty_generate( body )
       end
 
       # Generate the parameters for cloudformation

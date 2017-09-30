@@ -19,7 +19,7 @@ Or install it yourself as:
 
 ## Usage
 
-```
+```ruby
 require "ecs/easy/cluster"
 
 #
@@ -41,6 +41,10 @@ instance = Ecs::Easy::Instance.new do |i|
   i.vpc       = "vpc-00000000"
   i.image_id  = "ami-00000000"
   i.security_group = "sg-00000000"
+  # Currently user_data allows only /bin/bash
+  i.user_data = [
+    "echo 'xxxxxxxx' >> /home/ec2-user/.ssh/authorized_keys\n",
+  ]
 end
 
 # 

@@ -11,7 +11,7 @@ require "ecs/easy/instance"
 #   c.region = ""
 # end
 # instance = Ecs::Easy::Instance.new do |i|
-#   i.instance_type = "t2.nano"
+#   i.type      = "t2.nano"
 #   i.keypair   = "your-keypair"
 #   i.azs       = "ap-northeast-1a,ap-northeast-1c"
 #   i.subnets   = "subnet-00000000,subnet-11111111"
